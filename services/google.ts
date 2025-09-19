@@ -159,21 +159,16 @@ export const createNewSheet = async (title: string) => {
 };
 
 export const validateSheet = async (spreadsheetId: string): Promise<boolean> => {
-  try {
-    const response = await window.gapi.client.sheets.spreadsheets.get({
-      spreadsheetId: spreadsheetId,
-    });
-    const sheetNames = response.result.sheets.map((s: any) => s.properties.title);
-    const hasBooks = sheetNames.includes(SHEET_CONFIG.BOOKS.name);
-    const hasUsers = sheetNames.includes(SHEET_CONFIG.USERS.name);
-    const hasLoans = sheetNames.includes(SHEET_CONFIG.LOANS.name);
-    
-    // a full validation would check headers too, but this is good for the MVP
-    return hasBooks && hasUsers && hasLoans;
-  } catch (error) {
-    console.error("Sheet validation failed", error);
-    return false;
-  }
+  const response = await window.gapi.client.sheets.spreadsheets.get({
+    spreadsheetId: spreadsheetId,
+  });
+  const sheetNames = response.result.sheets.map((s: any) => s.properties.title);
+  const hasBooks = sheetNames.includes(SHEET_CONFIG.BOOKS.name);
+  const hasUsers = sheetNames.includes(SHEET_CONFIG.USERS.name);
+  const hasLoans = sheetNames.includes(SHEET_CONFIG.LOANS.name);
+  
+  // a full validation would check headers too, but this is good for the MVP
+  return hasBooks && hasUsers && hasLoans;
 };
 
 

@@ -1,35 +1,80 @@
-
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { AppStateContext } from '../App';
-import type { Loan } from '../types';
-import { getSheetData } from '../services/google';
+import type { Loan, Book } from '../types';
+import { getSheetData, updateCell } from '../services/google';
 import { SHEET_CONFIG, ICONS } from '../constants';
 import Spinner from './common/Spinner';
 
 const LoansPage: React.FC = () => {
   const { spreadsheetId } = useContext(AppStateContext);
   const [loans, setLoans] = useState<Loan[]>([]);
+  const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isUpdatingLoan, setIsUpdatingLoan] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    if (!spreadsheetId) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [loansData, booksData] = await Promise.all([
+        getSheetData<Loan>(spreadsheetId, SHEET_CONFIG.LOANS.name, SHEET_CONFIG.LOANS.headers),
+        getSheetData<Book>(spreadsheetId, SHEET_CONFIG.BOOKS.name, SHEET_CONFIG.BOOKS.headers),
+      ]);
+      setLoans(loansData);
+      setBooks(booksData);
+    } catch (err: any) {
+      console.error(err);
+      let message = "Failed to load loans. Please check your sheet and permissions.";
+      if (err?.result?.error?.message) {
+        message = `Error from Google: ${err.result.error.message}. Please verify your Spreadsheet ID and permissions.`;
+      }
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchLoans = async () => {
-      if (!spreadsheetId) return;
-      setIsLoading(true);
-      setError(null);
-      try {
-        const loansData = await getSheetData<Loan>(spreadsheetId, SHEET_CONFIG.LOANS.name, SHEET_CONFIG.LOANS.headers);
-        setLoans(loansData);
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load loans. Please check your sheet and permissions.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchLoans();
+    fetchData();
   }, [spreadsheetId]);
+
+  const handleReturnBook = async (loan: Loan) => {
+    if (!spreadsheetId) return;
+    setIsUpdatingLoan(loan.id);
+    try {
+      // 1. Update Loan sheet: is_returned to TRUE and return_date to today
+      const returnDate = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+      const isReturnedCell = `${SHEET_CONFIG.LOANS.name}!I${loan.row}`; // Column I is is_returned
+      const returnDateCell = `${SHEET_CONFIG.LOANS.name}!H${loan.row}`; // Column H is return_date
+      
+      await Promise.all([
+        updateCell(spreadsheetId, isReturnedCell, 'TRUE'),
+        updateCell(spreadsheetId, returnDateCell, returnDate)
+      ]);
+
+      // 2. Update Books sheet: increment available_copies
+      const bookToReturn = books.find(b => b.id === loan.book_id);
+      if (bookToReturn) {
+        const newAvailableCopies = bookToReturn.available_copies + 1;
+        const availableCopiesCell = `${SHEET_CONFIG.BOOKS.name}!J${bookToReturn.row}`; // Column J is available_copies
+        await updateCell(spreadsheetId, availableCopiesCell, newAvailableCopies);
+      } else {
+          console.warn(`Book with ID ${loan.book_id} not found for returning loan ${loan.id}. Available copies not updated.`);
+      }
+
+      // 3. Refresh data
+      await fetchData();
+
+    } catch (err: any) {
+      console.error("Failed to return book", err);
+      alert(`Failed to return book. Error from Google: ${err?.result?.error?.message || 'Unknown error'}`);
+    } finally {
+      setIsUpdatingLoan(null);
+    }
+  };
 
   const filteredLoans = useMemo(() => {
     if (!searchTerm) return loans;
@@ -52,7 +97,7 @@ const LoansPage: React.FC = () => {
     if (loan.is_returned) {
       return { text: 'Returned', color: 'green' };
     }
-    if (new Date(loan.due_date) < new Date()) {
+    if (loan.due_date && new Date(loan.due_date) < new Date()) {
       return { text: 'Overdue', color: 'red' };
     }
     return { text: 'On Loan', color: 'yellow' };
@@ -76,7 +121,7 @@ const LoansPage: React.FC = () => {
         </div>
       </div>
 
-      {error && <p className="text-red-500 bg-red-100 p-3 rounded-md mb-4">{error}</p>}
+      {error && <p className="text-red-500 bg-red-100 dark:bg-red-900/50 p-3 rounded-md mb-4">{error}</p>}
 
       <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
@@ -104,8 +149,8 @@ const LoansPage: React.FC = () => {
                   <tr key={loan.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                     <td scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">{loan.book_title}</td>
                     <td className="px-6 py-4">{loan.user_name}</td>
-                    <td className="px-6 py-4">{new Date(loan.loan_date).toLocaleDateString()}</td>
-                    <td className="px-6 py-4">{new Date(loan.due_date).toLocaleDateString()}</td>
+                    <td className="px-6 py-4">{loan.loan_date ? new Date(loan.loan_date).toLocaleDateString() : 'N/A'}</td>
+                    <td className="px-6 py-4">{loan.due_date ? new Date(loan.due_date).toLocaleDateString() : 'N/A'}</td>
                     <td className="px-6 py-4">{loan.return_date ? new Date(loan.return_date).toLocaleDateString() : 'N/A'}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${colorClasses[status.color as keyof typeof colorClasses]}`}>
@@ -113,14 +158,22 @@ const LoansPage: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {!loan.is_returned && <button className="font-medium text-blue-600 dark:text-blue-500 hover:underline">Return</button>}
+                      {!loan.is_returned && (
+                        <button 
+                          onClick={() => handleReturnBook(loan)} 
+                          disabled={isUpdatingLoan === loan.id}
+                          className="font-medium text-blue-600 dark:text-blue-500 hover:underline disabled:text-gray-400 disabled:no-underline"
+                        >
+                          {isUpdatingLoan === loan.id ? 'Returning...' : 'Return'}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          {filteredLoans.length === 0 && <p className="p-4 text-center">No loans found.</p>}
+          {filteredLoans.length === 0 && !isLoading && <p className="p-4 text-center">No loans found.</p>}
         </div>
       </div>
     </div>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useContext } from 'react';
 import { AppStateContext } from '../App';
 import type { Book, LibraryUser, Loan } from '../types';
@@ -29,9 +28,13 @@ const Dashboard: React.FC = () => {
         setBooks(booksData);
         setUsers(usersData);
         setLoans(loansData);
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
-        setError("Failed to load dashboard data. Please check your sheet and permissions.");
+        let message = "Failed to load dashboard data. Please check your sheet and permissions.";
+        if (err?.result?.error?.message) {
+          message = `Error from Google: ${err.result.error.message}. Please verify your Spreadsheet ID and permissions.`;
+        }
+        setError(message);
       } finally {
         setIsLoading(false);
       }
@@ -48,7 +51,7 @@ const Dashboard: React.FC = () => {
   }
 
   if (error) {
-    return <div className="text-red-500 text-center">{error}</div>;
+    return <div className="text-red-500 text-center bg-red-100 dark:bg-red-900/50 p-4 rounded-lg">{error}</div>;
   }
 
   const totalBooks = books.length;

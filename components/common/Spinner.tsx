@@ -1,14 +1,17 @@
-
 import React from 'react';
 
-const Spinner: React.FC = () => {
+const Spinner: React.FC<{ small?: boolean }> = ({ small }) => {
+  const size = small ? "w-5 h-5" : "w-12 h-12";
   return (
-    <div className="flex flex-col items-center justify-center space-y-2">
+    <div className="inline-flex items-center justify-center mx-2">
       <div
-        className="w-12 h-12 rounded-full animate-spin border-4 border-solid border-blue-500 border-t-transparent"
-        style={{ animation: 'spin 1.2s linear infinite' }}
-      ></div>
-      <p className="text-gray-600 dark:text-gray-300">Loading...</p>
+        className={`${size} rounded-full animate-spin border-2 border-solid border-current border-t-transparent`}
+        style={{ animation: 'spin 1s linear infinite' }}
+        role="status"
+        aria-live="polite"
+      >
+         <span className="sr-only">Loading...</span>
+      </div>
     </div>
   );
 };

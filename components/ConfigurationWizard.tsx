@@ -63,25 +63,31 @@ const ConfigurationWizard: React.FC<WizardProps> = ({ onComplete }) => {
                         <p className="text-gray-600 dark:text-gray-300 mb-6">Now, create credentials so the app can use the APIs you just enabled. These are like passwords for your project.</p>
                         
                         <div className="text-left space-y-4">
-                            <details className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer">
-                                <summary className="font-semibold text-gray-800 dark:text-gray-200">1. Get API Key</summary>
+                            <details className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer" open>
+                                <summary className="font-semibold text-gray-800 dark:text-gray-200">1. Get & Restrict API Key (Crucial Step)</summary>
                                 <ol className="list-decimal list-inside mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
                                     <li><a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">Open the Credentials page</a>.</li>
-                                    <li>Click "+ CREATE CREDENTIALS" at the top and select "API key".</li>
-                                    <li>A pop-up will show your new key. Copy it and paste it below.</li>
+                                    <li>Click <strong>+ CREATE CREDENTIALS</strong> at the top and select <strong>API key</strong>.</li>
+                                    <li>A pop-up will show your new key. Copy it and paste it into the "API Key" field below. <strong>Do not close the pop-up yet.</strong></li>
+                                    <li>Click the <strong>EDIT API KEY</strong> button. This step is required for the app to work correctly.</li>
+                                    <li>Under <i>Application restrictions</i>, select the <strong>Websites</strong> option.</li>
+                                    <li>Under <i>Website restrictions</i>, click <strong>ADD</strong>.</li>
+                                    <li>In the "URI" field that appears, enter your app's address: <code className="bg-gray-200 dark:bg-gray-600 rounded px-1 font-mono">{appOrigin}</code></li>
+                                    <li>Click <strong>DONE</strong>, and then click <strong>SAVE</strong> at the bottom of the page.</li>
                                 </ol>
                             </details>
 
                             <details className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer">
                                 <summary className="font-semibold text-gray-800 dark:text-gray-200">2. Get OAuth Client ID</summary>
-                                <ol className="list-decimal list-inside mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                    <li>Go to the <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">OAuth consent screen</a> page. If the "Publishing status" is "Testing", click "PUBLISH APP" and confirm. This step is crucial to prevent sign-in errors.</li>
-                                    <li>Now, go back to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">Credentials page</a>. Click "+ CREATE CREDENTIALS" and select "OAuth client ID".</li>
-                                    <li>If you haven't configured the consent screen yet, follow the prompts for an "External" user type, and provide an app name and your email. You can skip the optional scopes section.</li>
-                                    <li>Once creating the Client ID, for "Application type", choose "Web application".</li>
-                                    <li>Under "Authorized JavaScript origins", click "+ ADD URI" and enter your app's address: <code className="bg-gray-200 dark:bg-gray-600 rounded px-1 font-mono">{appOrigin}</code></li>
-                                    <li>Under "Authorized redirect URIs", click "+ ADD URI" and enter the <strong>exact same address</strong> again: <code className="bg-gray-200 dark:bg-gray-600 rounded px-1 font-mono">{appOrigin}</code></li>
-                                    <li>Click "CREATE". A pop-up will show your Client ID. Copy it and paste it below.</li>
+                                 <ol className="list-decimal list-inside mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                                    <li>First, go to the <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">OAuth consent screen</a>. If the "Publishing status" is "Testing", click <strong>PUBLISH APP</strong> and confirm. This prevents sign-in errors later.</li>
+                                    <li>Now, go back to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">Credentials page</a>.</li>
+                                    <li>Click <strong>+ CREATE CREDENTIALS</strong> and select <strong>OAuth client ID</strong>.</li>
+                                    <li>If prompted, for "Application type", choose <strong>Web application</strong>.</li>
+                                    <li>Under "Authorized JavaScript origins", click <strong>+ ADD URI</strong> and enter your app's address: <code className="bg-gray-200 dark:bg-gray-600 rounded px-1 font-mono">{appOrigin}</code></li>
+                                    <li>Under "Authorized redirect URIs", click <strong>+ ADD URI</strong> and enter the <strong>exact same address</strong> again: <code className="bg-gray-200 dark:bg-gray-600 rounded px-1 font-mono">{appOrigin}</code></li>
+                                    <li>Click <strong>CREATE</strong>. A pop-up will show your Client ID. Copy it and paste it into the "OAuth Client ID" field below.</li>
+                                    <li className="!mt-4 text-xs italic">If you are asked to configure the consent screen first, select "External" user type, provide an app name and your email, and click through the save prompts. You can skip optional scopes. Then return to step 1 here.</li>
                                 </ol>
                             </details>
 

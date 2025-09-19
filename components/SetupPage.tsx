@@ -1,4 +1,3 @@
-
 import React, { useState, useContext } from 'react';
 import { AppStateContext } from '../App';
 import { createNewSheet, validateSheet } from '../services/google';
@@ -20,9 +19,13 @@ const SetupPage: React.FC = () => {
       } else {
         setError("Failed to create a new sheet. Please try again.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("An error occurred while creating the sheet. Check console for details.");
+      let message = "An error occurred while creating the sheet. Check console for details.";
+      if (err?.result?.error?.message) {
+        message = `Error from Google: ${err.result.error.message}. Please ensure the Google Sheets and Drive APIs are enabled in your Cloud project.`;
+      }
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -42,9 +45,13 @@ const SetupPage: React.FC = () => {
       } else {
         setError("Invalid sheet. Ensure it has 'Books', 'Users', and 'Loans' tabs.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Could not access or validate the sheet. Please check the ID and your permissions.");
+      let message = "Could not access or validate the sheet. Please check the ID and your permissions.";
+      if (err?.result?.error?.message) {
+          message = `Error from Google: ${err.result.error.message}. Please check the Spreadsheet ID and your permissions.`;
+      }
+      setError(message);
     } finally {
       setIsLoading(false);
     }

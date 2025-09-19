@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { AppStateContext } from '../App';
 import type { LibraryUser } from '../types';
@@ -21,9 +20,13 @@ const UsersPage: React.FC = () => {
       try {
         const usersData = await getSheetData<LibraryUser>(spreadsheetId, SHEET_CONFIG.USERS.name, SHEET_CONFIG.USERS.headers);
         setUsers(usersData);
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
-        setError("Failed to load users. Please check your sheet and permissions.");
+        let message = "Failed to load users. Please check your sheet and permissions.";
+        if (err?.result?.error?.message) {
+          message = `Error from Google: ${err.result.error.message}. Please verify your Spreadsheet ID and permissions.`;
+        }
+        setError(message);
       } finally {
         setIsLoading(false);
       }
@@ -67,7 +70,7 @@ const UsersPage: React.FC = () => {
         </div>
       </div>
 
-      {error && <p className="text-red-500 bg-red-100 p-3 rounded-md mb-4">{error}</p>}
+      {error && <p className="text-red-500 bg-red-100 dark:bg-red-900/50 p-3 rounded-md mb-4">{error}</p>}
 
       <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
@@ -99,7 +102,7 @@ const UsersPage: React.FC = () => {
               ))}
             </tbody>
           </table>
-          {filteredUsers.length === 0 && <p className="p-4 text-center">No users found.</p>}
+          {filteredUsers.length === 0 && !isLoading && <p className="p-4 text-center">No users found.</p>}
         </div>
       </div>
     </div>
