@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { AppStateContext } from '../App';
 import type { LibraryUser } from '../types';
-import { getSheetData } from '../services/google';
+import { getSheetData, updateCell } from '../services/google';
 import { SHEET_CONFIG, ICONS } from '../constants';
 import Spinner from './common/Spinner';
+import ToggleSwitch from './common/ToggleSwitch';
 
 const UsersPage: React.FC = () => {
   const { spreadsheetId } = useContext(AppStateContext);
@@ -11,28 +12,54 @@ const UsersPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
+
+  const fetchUsers = async () => {
+    if (!spreadsheetId) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const usersData = await getSheetData<LibraryUser>(spreadsheetId, SHEET_CONFIG.USERS.name, SHEET_CONFIG.USERS.headers);
+      setUsers(usersData);
+    } catch (err: any) {
+      console.error(err);
+      let message = "Failed to load users. Please check your sheet and permissions.";
+      if (err?.result?.error?.message) {
+        message = `Error from Google: ${err.result.error.message}. Please verify your Spreadsheet ID and permissions.`;
+      }
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      if (!spreadsheetId) return;
-      setIsLoading(true);
-      setError(null);
-      try {
-        const usersData = await getSheetData<LibraryUser>(spreadsheetId, SHEET_CONFIG.USERS.name, SHEET_CONFIG.USERS.headers);
-        setUsers(usersData);
-      } catch (err: any) {
-        console.error(err);
-        let message = "Failed to load users. Please check your sheet and permissions.";
-        if (err?.result?.error?.message) {
-          message = `Error from Google: ${err.result.error.message}. Please verify your Spreadsheet ID and permissions.`;
-        }
-        setError(message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchUsers();
   }, [spreadsheetId]);
+
+  const handleToggleUserStatus = async (user: LibraryUser) => {
+    if (!spreadsheetId) return;
+    setIsUpdating(user.id);
+    try {
+      const newStatus = !user.is_active;
+      // Column G is 'is_active' in the Users sheet
+      const statusCell = `${SHEET_CONFIG.USERS.name}!G${user.row}`;
+      await updateCell(spreadsheetId, statusCell, newStatus ? 'TRUE' : 'FALSE');
+
+      // Update local state for instant UI feedback
+      setUsers(prevUsers =>
+        prevUsers.map(u =>
+          u.id === user.id ? { ...u, is_active: newStatus } : u
+        )
+      );
+    } catch (err: any) {
+      console.error("Failed to update user status", err);
+      alert(`Failed to update status. Error from Google: ${err?.result?.error?.message || 'Unknown error'}`);
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+
 
   const filteredUsers = useMemo(() => {
     if (!searchTerm) return users;
@@ -81,7 +108,7 @@ const UsersPage: React.FC = () => {
                 <th scope="col" className="px-6 py-3">Email</th>
                 <th scope="col" className="px-6 py-3">Phone</th>
                 <th scope="col" className="px-6 py-3">Registration Date</th>
-                <th scope="col" className="px-6 py-3">Status</th>
+                <th scope="col" className="px-6 py-3 text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -92,11 +119,18 @@ const UsersPage: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">{user.email}</td>
                   <td className="px-6 py-4">{user.phone}</td>
-                  <td className="px-6 py-4">{new Date(user.registration_date).toLocaleDateString()}</td>
-                  <td className="px-6 py-4">
-                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
-                      {user.is_active ? 'Active' : 'Inactive'}
-                    </span>
+                  <td className="px-6 py-4">{user.registration_date ? new Date(user.registration_date).toLocaleDateString() : 'N/A'}</td>
+                  <td className="px-6 py-4 text-center">
+                     <div className="flex flex-col items-center">
+                        <ToggleSwitch
+                            checked={user.is_active}
+                            onChange={() => handleToggleUserStatus(user)}
+                            disabled={isUpdating === user.id}
+                        />
+                        <span className={`text-xs mt-1 font-semibold ${user.is_active ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {user.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                     </div>
                   </td>
                 </tr>
               ))}
