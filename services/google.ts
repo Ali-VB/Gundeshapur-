@@ -205,6 +205,17 @@ export const appendRow = async (spreadsheetId: string, sheetName: string, row: a
     });
 };
 
+export const appendRows = async (spreadsheetId: string, sheetName: string, rows: any[][]) => {
+    return await window.gapi.client.sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: sheetName,
+        valueInputOption: 'USER_ENTERED',
+        resource: {
+            values: rows
+        }
+    });
+};
+
 
 export const updateCell = async (spreadsheetId: string, range: string, value: any) => {
     return await window.gapi.client.sheets.spreadsheets.values.update({

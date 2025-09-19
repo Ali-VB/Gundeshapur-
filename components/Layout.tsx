@@ -6,6 +6,7 @@ import Dashboard from './Dashboard';
 import BooksPage from './Books';
 import UsersPage from './Users';
 import LoansPage from './Loans';
+import AdminPage from './Admin';
 import { ICONS } from '../constants';
 
 const NavLink: React.FC<{
@@ -41,6 +42,8 @@ const Layout: React.FC = () => {
         return <UsersPage />;
       case Page.Loans:
         return <LoansPage />;
+      case Page.Admin:
+        return <AdminPage />;
       default:
         return <Dashboard />;
     }
@@ -65,15 +68,19 @@ const Layout: React.FC = () => {
           <NavLink icon={ICONS.LOANS} label={Page.Loans} activePage={activePage} setPage={setActivePage} />
         </nav>
         <div className="mt-auto">
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4 space-y-2">
+             <NavLink icon={ICONS.ADMIN} label={Page.Admin} activePage={activePage} setPage={setActivePage} />
+          </div>
+
           <a
             href={sheetUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center w-full px-4 py-2 mb-4 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors duration-200"
+            className="flex items-center justify-center w-full px-4 py-2 mt-4 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors duration-200"
           >
             Open Sheet {ICONS.EXTERNAL_LINK}
           </a>
-          <div className="flex items-center p-2 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center p-2 mt-4 border-t border-gray-200 dark:border-gray-700">
             <img src={user?.imageUrl} alt={user?.name} className="w-10 h-10 rounded-full" />
             <div className="ml-3">
               <p className="text-sm font-semibold text-gray-800 dark:text-white">{user?.name}</p>
