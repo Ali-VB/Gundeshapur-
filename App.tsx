@@ -10,6 +10,7 @@ import UserLayout from './components/Layout';
 import Spinner from './components/common/Spinner';
 import ConfigurationWizard from './components/ConfigurationWizard';
 import AdminLayout from './components/admin/AdminLayout';
+import WelcomePage from './components/WelcomePage';
 
 export const AppStateContext = React.createContext<{
   user: UserProfile | null;
@@ -35,7 +36,6 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [initializationError, setInitializationError] = useState<string | null>(null);
   const [showWizard, setShowWizard] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
   const [appMode, setAppMode] = useState<'user' | 'admin' | null>(null);
 
   useEffect(() => {
@@ -48,39 +48,33 @@ const App: React.FC = () => {
     setClientId(savedClientId);
     setSpreadsheetId(savedSpreadsheetId);
 
-    const isConfigured = !!(savedApiKey && savedClientId);
-
     const initialize = async () => {
-      // We must have a client ID to attempt sign-in. API key is for sheets.
-      // If client ID is missing, we can't do anything, just wait for user to enter wizard.
+      // We must have a client ID to attempt sign-in, even for an admin.
+      // If client ID is missing, we can't do anything but wait for a user to configure.
+      // But we will allow the login page to show.
       if (!savedClientId) {
           setIsLoading(false);
           return;
       }
       
       try {
-        // Configure the google service with whatever credentials we have.
-        // The service is designed to handle a missing API key for admin login.
         configureGoogleApi(savedApiKey, savedClientId);
         await initGoogleScripts();
         setIsGapiLoaded(true);
         
-        // Attempt a silent sign-in
         const silentUser = await signIn({ prompt: '' });
         if (silentUser) {
-          // Check if the signed-in user is the super admin
           if (silentUser.email === SUPER_ADMIN_EMAIL) {
             setUser(silentUser);
             setAppMode('admin');
-          } else if (isConfigured) {
-            // If it's a regular user, they can only proceed if the app is fully configured
+          } else {
             setUser(silentUser);
             setAppMode('user');
           }
         }
       } catch (error) {
         console.error("Failed to initialize Google scripts:", error);
-        const errorMessage = `Failed to initialize Google services. This is likely due to an invalid Client ID. Please double-check your Google Cloud project configuration.`;
+        const errorMessage = `Failed to initialize Google services. This is likely due to an invalid Client ID saved in your browser. Please try resetting the configuration.`;
         setInitializationError(errorMessage);
       } finally {
         setIsLoading(false);
@@ -115,43 +109,26 @@ const App: React.FC = () => {
     setApiKey(null);
     setClientId(null);
     setInitializationError(null);
-    setLoginError(null);
+    setShowWizard(false);
   };
 
   const handleSignIn = async () => {
-    setLoginError(null);
-    
-    // Sign-in can be attempted even without full config, for the admin.
-    // The google service needs to be loaded, which requires a client ID.
-    if (!isGapiLoaded) {
-      setLoginError("Application is not configured. Please complete the setup wizard.");
-      return;
-    }
-
+    // Always allow sign-in attempt. The app will route the user based on their role and config status.
     setIsLoading(true);
     try {
       const profile = await signIn();
       if (profile) {
-        // Automatic role detection
         if (profile.email === SUPER_ADMIN_EMAIL) {
           setUser(profile);
           setAppMode('admin');
         } else {
-          // For regular users, check if the app is configured.
-          const isConfigured = !!(apiKey && clientId);
-          if (isConfigured) {
-            setUser(profile);
-            setAppMode('user');
-          } else {
-            // This case should ideally not be hit if the button is disabled, but is a safeguard.
-            signOut();
-            setLoginError("Application is not configured. Please complete the setup wizard before signing in.");
-          }
+          setUser(profile);
+          setAppMode('user');
         }
       }
     } catch (error) {
       console.error("Sign in failed", error);
-      alert('Sign in failed. Please check your configuration and allow popups.');
+      alert('Sign in failed. Please check your browser console and ensure popups are allowed.');
     } finally {
       setIsLoading(false);
     }
@@ -186,41 +163,33 @@ const App: React.FC = () => {
   
   const isConfigured = !!(apiKey && clientId);
 
+  const renderContent = () => {
+    if (!user) {
+      return <LoginPage onSignIn={handleSignIn} initializationError={initializationError} />;
+    }
+
+    if (appMode === 'admin') {
+      return <AdminLayout />;
+    }
+
+    if (appMode === 'user') {
+      if (!isConfigured) {
+        return <WelcomePage onStartSetup={() => setShowWizard(true)} />;
+      }
+      if (!spreadsheetId) {
+        return <SetupPage />;
+      }
+      return <UserLayout />;
+    }
+
+    // Fallback for any unexpected state
+    return <LoginPage onSignIn={handleSignIn} initializationError="An unexpected error occurred. Please try signing in again." />;
+  };
+
   return (
     <AppStateContext.Provider value={contextValue}>
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-        {!user ? (
-          <LoginPage
-            onSignIn={handleSignIn}
-            initializationError={initializationError}
-            loginError={loginError}
-            onSetup={() => {
-              setLoginError(null);
-              setShowWizard(true);
-            }}
-            isConfigured={isConfigured}
-          />
-        ) : appMode === 'admin' ? (
-          <AdminLayout />
-        ) : appMode === 'user' ? (
-          !spreadsheetId ? (
-            <SetupPage />
-          ) : (
-            <UserLayout />
-          )
-        ) : (
-           // Fallback if mode is not set for some reason, e.g. a non-admin user logs in on an unconfigured app
-           <div className="flex h-screen w-screen items-center justify-center bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-             <div className="text-center p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-                <h2 className="text-xl font-bold mb-4">Login Error</h2>
-                <p>Could not determine application state. This might happen if you are trying to log in as a regular user before the application is configured.</p>
-                <div className="mt-6 flex gap-4 justify-center">
-                    <button onClick={handleSignOut} className="px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg">Sign Out</button>
-                    <button onClick={handleResetConfiguration} className="px-4 py-2 bg-red-600 text-white rounded-lg">Reset Config</button>
-                </div>
-             </div>
-           </div>
-        )}
+        {renderContent()}
       </div>
     </AppStateContext.Provider>
   );
