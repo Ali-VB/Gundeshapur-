@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { ICONS } from '../constants';
 
 interface WizardProps {
-    onComplete: (apiKey: string, clientId: string, adminEmail: string) => void;
+    onComplete: (apiKey: string, clientId: string) => void;
     onCancel: () => void;
 }
 
@@ -11,16 +11,15 @@ const ConfigurationWizard: React.FC<WizardProps> = ({ onComplete, onCancel }) =>
     const [step, setStep] = useState(1);
     const [apiKey, setApiKey] = useState('');
     const [clientId, setClientId] = useState('');
-    const [adminEmail, setAdminEmail] = useState('');
     const [error, setError] = useState('');
 
     const handleSubmit = () => {
-        if (!apiKey.trim() || !clientId.trim() || !adminEmail.trim()) {
-            setError('All three fields (API Key, Client ID, and Admin Email) are required.');
+        if (!apiKey.trim() || !clientId.trim()) {
+            setError('Both API Key and Client ID are required.');
             return;
         }
         setError('');
-        onComplete(apiKey, clientId, adminEmail);
+        onComplete(apiKey, clientId);
     }
 
     const appOrigin = window.location.origin;
@@ -95,17 +94,10 @@ const ConfigurationWizard: React.FC<WizardProps> = ({ onComplete, onCancel }) =>
                                     <li>Click <strong>CREATE</strong>. Copy the Client ID and paste it into the field below.</li>
                                 </ol>
                             </details>
-                             <details className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer" open>
-                                <summary className="font-semibold text-gray-800 dark:text-gray-200">3. Set Admin Email</summary>
-                                <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
-                                    Enter the Google account email address that will be the sole administrator for this application instance. Only this user will be able to access the secure admin panel.
-                                </p>
-                            </details>
-
+                            
                             <div className="space-y-3 mt-4">
                                 <input type="text" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="Paste your API Key here" className="w-full p-3 border border-gray-300 rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500" />
                                 <input type="text" value={clientId} onChange={e => setClientId(e.target.value)} placeholder="Paste your OAuth Client ID here" className="w-full p-3 border border-gray-300 rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500" />
-                                <input type="email" value={adminEmail} onChange={e => setAdminEmail(e.target.value)} placeholder="Enter the Admin's Google Email" className="w-full p-3 border border-gray-300 rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500" />
                             </div>
                         </div>
                          {error && <p className="text-red-500 text-sm mt-4">{error}</p>}

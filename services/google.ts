@@ -1,3 +1,4 @@
+
 import { GOOGLE_SCOPES, SHEET_CONFIG } from '../constants';
 import type { UserProfile } from '../types';
 
@@ -12,45 +13,65 @@ declare global {
 let apiKey: string | null = null;
 let clientId: string | null = null;
 
-export const configureGoogleApi = (key: string, id: string) => {
+export const configureGoogleApi = (key: string | null, id: string | null) => {
     apiKey = key;
     clientId = id;
 };
 
 export const initGoogleScripts = (): Promise<void> => {
   return new Promise((resolve, reject) => {
-    if (!apiKey || !clientId) {
-      return reject(new Error("Google API key and Client ID are not configured."));
-    }
-
     const checkScriptsReady = () => {
-      // Check if both the gapi and gsi libraries have loaded and exposed their global objects.
+      // Check if both the gapi and gsi libraries have loaded.
       if (window.gapi && window.google?.accounts?.oauth2) {
         
-        // gapi is loaded, but we need to load the 'client' module within it.
-        window.gapi.load('client', () => {
-          // Now, initialize the gapi client with our API key and discovery docs.
-          window.gapi.client.init({
-            apiKey: apiKey,
-            discoveryDocs: [
-              'https://sheets.googleapis.com/$discovery/rest?version=v4',
-              'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
-            ],
-          }).then(() => {
-            // gapi client is ready. Now initialize the Google Identity Services token client.
-            try {
-              window.tokenClient = window.google.accounts.oauth2.initTokenClient({
-                  client_id: clientId,
-                  scope: GOOGLE_SCOPES,
-                  callback: '', // This is set dynamically when signIn is called.
-              });
-              // Both libraries are now fully initialized and ready to use.
-              resolve();
-            } catch (err) {
-              reject(err);
+        let gapiInited = false;
+        let tokenClientInited = false;
+
+        const checkCompletion = () => {
+            // If we have an API key, we need GAPI client. If not, we don't.
+            const gapiTarget = apiKey ? gapiInited : true;
+            // We always need a token client if a client ID is provided.
+            const tokenClientTarget = clientId ? tokenClientInited : true;
+
+            if (gapiTarget && tokenClientTarget) {
+                resolve();
             }
-          }).catch(reject); // Catch errors from gapi.client.init
-        });
+        };
+
+        // Initialize Google Identity Services token client if clientId is available.
+        // This is required for any sign-in flow.
+        if (clientId) {
+          try {
+            window.tokenClient = window.google.accounts.oauth2.initTokenClient({
+                client_id: clientId,
+                scope: GOOGLE_SCOPES,
+                callback: '', // This is set dynamically when signIn is called.
+            });
+            tokenClientInited = true;
+          } catch (err) {
+            return reject(err);
+          }
+        }
+
+        // Initialize gapi client if apiKey is available.
+        // This is required for Sheets/Drive API calls.
+        if (apiKey) {
+          window.gapi.load('client', () => {
+            window.gapi.client.init({
+              apiKey: apiKey,
+              discoveryDocs: [
+                'https://sheets.googleapis.com/$discovery/rest?version=v4',
+                'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
+              ],
+            }).then(() => {
+                gapiInited = true;
+                checkCompletion();
+            }).catch(reject);
+          });
+        }
+        
+        checkCompletion();
+
       } else {
         // One or both scripts are not ready yet, poll again in 100ms.
         setTimeout(checkScriptsReady, 100);
@@ -64,7 +85,7 @@ export const initGoogleScripts = (): Promise<void> => {
 export const signIn = (options?: { prompt?: '' | 'consent' | 'select_account' }): Promise<UserProfile | null> => {
     return new Promise((resolve, reject) => {
         if (!window.tokenClient) {
-            return reject("Google Token Client not initialized.");
+            return reject("Google Token Client not initialized. Is the app configured with a Client ID?");
         }
         
         const callback = async (res: any) => {

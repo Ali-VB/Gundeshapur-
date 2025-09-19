@@ -1,4 +1,8 @@
+
 import React from 'react';
+
+// The super administrator email for the SaaS platform. This user has access to the admin panel.
+export const SUPER_ADMIN_EMAIL = 'eitheror.compony@gmail.com';
 
 // IMPORTANT: Credentials are now configured via the in-app setup wizard.
 // The GOOGLE_API_KEY and GOOGLE_CLIENT_ID are stored in localStorage.

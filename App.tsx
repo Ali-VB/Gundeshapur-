@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { UserProfile } from './types';
 import { initGoogleScripts, signIn, signOut, configureGoogleApi } from './services/google';
+import { SUPER_ADMIN_EMAIL } from './constants';
 
 import LoginPage from './components/LoginPage';
 import SetupPage from './components/SetupPage';
@@ -27,8 +28,7 @@ export const AppStateContext = React.createContext<{
 const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
-  const [adminEmail, setAdminEmail] = useState<string | null>(null);
-
+  
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isGapiLoaded, setIsGapiLoaded] = useState(false);
   const [spreadsheetId, setSpreadsheetId] = useState<string | null>(null);
@@ -42,38 +42,45 @@ const App: React.FC = () => {
     // Load config from localStorage on initial mount
     const savedApiKey = localStorage.getItem('googleApiKey');
     const savedClientId = localStorage.getItem('googleClientId');
-    const savedAdminEmail = localStorage.getItem('adminEmail');
     const savedSpreadsheetId = localStorage.getItem('spreadsheetId');
     
     setApiKey(savedApiKey);
     setClientId(savedClientId);
-    setAdminEmail(savedAdminEmail);
     setSpreadsheetId(savedSpreadsheetId);
 
-    const isConfigured = !!(savedApiKey && savedClientId && savedAdminEmail);
+    const isConfigured = !!(savedApiKey && savedClientId);
 
     const initialize = async () => {
-      if (!isConfigured) {
-        setIsLoading(false);
-        return;
+      // We must have a client ID to attempt sign-in. API key is for sheets.
+      // If client ID is missing, we can't do anything, just wait for user to enter wizard.
+      if (!savedClientId) {
+          setIsLoading(false);
+          return;
       }
+      
       try {
-        configureGoogleApi(savedApiKey!, savedClientId!);
+        // Configure the google service with whatever credentials we have.
+        // The service is designed to handle a missing API key for admin login.
+        configureGoogleApi(savedApiKey, savedClientId);
         await initGoogleScripts();
         setIsGapiLoaded(true);
         
+        // Attempt a silent sign-in
         const silentUser = await signIn({ prompt: '' });
         if (silentUser) {
-          setUser(silentUser);
-          if (silentUser.email === savedAdminEmail) {
+          // Check if the signed-in user is the super admin
+          if (silentUser.email === SUPER_ADMIN_EMAIL) {
+            setUser(silentUser);
             setAppMode('admin');
-          } else {
+          } else if (isConfigured) {
+            // If it's a regular user, they can only proceed if the app is fully configured
+            setUser(silentUser);
             setAppMode('user');
           }
         }
       } catch (error) {
         console.error("Failed to initialize Google scripts:", error);
-        const errorMessage = `Failed to initialize Google services. This is likely due to an invalid API Key or Client ID. Please double-check your Google Cloud project configuration.`;
+        const errorMessage = `Failed to initialize Google services. This is likely due to an invalid Client ID. Please double-check your Google Cloud project configuration.`;
         setInitializationError(errorMessage);
       } finally {
         setIsLoading(false);
@@ -82,15 +89,15 @@ const App: React.FC = () => {
     initialize();
   }, []);
 
-  const handleConfigurationComplete = (key: string, id: string, email: string) => {
+  const handleConfigurationComplete = (key: string, id: string) => {
     localStorage.setItem('googleApiKey', key);
     localStorage.setItem('googleClientId', id);
-    localStorage.setItem('adminEmail', email);
     setApiKey(key);
     setClientId(id);
-    setAdminEmail(email);
     setInitializationError(null);
     setShowWizard(false);
+    // Reload to re-initialize with the new credentials
+    window.location.reload();
   };
   
   const handleSignOut = useCallback(() => {
@@ -105,35 +112,41 @@ const App: React.FC = () => {
     localStorage.removeItem('spreadsheetId');
     localStorage.removeItem('googleApiKey');
     localStorage.removeItem('googleClientId');
-    localStorage.removeItem('adminEmail');
     setApiKey(null);
     setClientId(null);
-    setAdminEmail(null);
     setInitializationError(null);
     setLoginError(null);
   };
 
   const handleSignIn = async () => {
     setLoginError(null);
-    const isConfigured = !!(apiKey && clientId && adminEmail);
-
-    if (!isConfigured) {
-      setLoginError('Application is not configured. Please complete the setup wizard first.');
+    
+    // Sign-in can be attempted even without full config, for the admin.
+    // The google service needs to be loaded, which requires a client ID.
+    if (!isGapiLoaded) {
+      setLoginError("Application is not configured. Please complete the setup wizard.");
       return;
     }
 
-    if (!isGapiLoaded) return;
     setIsLoading(true);
     try {
       const profile = await signIn();
       if (profile) {
         // Automatic role detection
-        if (profile.email === adminEmail) {
+        if (profile.email === SUPER_ADMIN_EMAIL) {
           setUser(profile);
           setAppMode('admin');
         } else {
-          setUser(profile);
-          setAppMode('user');
+          // For regular users, check if the app is configured.
+          const isConfigured = !!(apiKey && clientId);
+          if (isConfigured) {
+            setUser(profile);
+            setAppMode('user');
+          } else {
+            // This case should ideally not be hit if the button is disabled, but is a safeguard.
+            signOut();
+            setLoginError("Application is not configured. Please complete the setup wizard before signing in.");
+          }
         }
       }
     } catch (error) {
@@ -171,7 +184,7 @@ const App: React.FC = () => {
     return <ConfigurationWizard onComplete={handleConfigurationComplete} onCancel={() => setShowWizard(false)} />;
   }
   
-  const isConfigured = !!(apiKey && clientId && adminEmail);
+  const isConfigured = !!(apiKey && clientId);
 
   return (
     <AppStateContext.Provider value={contextValue}>
@@ -196,10 +209,16 @@ const App: React.FC = () => {
             <UserLayout />
           )
         ) : (
-          // Fallback if mode is not set for some reason
-           <div className="flex h-screen w-screen items-center justify-center bg-gray-100 dark:bg-gray-900">
-             <p>An unexpected error occurred. Please try resetting configuration.</p>
-             <button onClick={handleResetConfiguration}>Reset</button>
+           // Fallback if mode is not set for some reason, e.g. a non-admin user logs in on an unconfigured app
+           <div className="flex h-screen w-screen items-center justify-center bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+             <div className="text-center p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+                <h2 className="text-xl font-bold mb-4">Login Error</h2>
+                <p>Could not determine application state. This might happen if you are trying to log in as a regular user before the application is configured.</p>
+                <div className="mt-6 flex gap-4 justify-center">
+                    <button onClick={handleSignOut} className="px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg">Sign Out</button>
+                    <button onClick={handleResetConfiguration} className="px-4 py-2 bg-red-600 text-white rounded-lg">Reset Config</button>
+                </div>
+             </div>
            </div>
         )}
       </div>

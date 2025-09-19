@@ -8,10 +8,10 @@ interface LoginPageProps {
   onSetup: () => void;
   initializationError?: string | null;
   loginError?: string | null;
-  isConfigured: boolean;
+  isConfigured: boolean; // Keep prop for potential future use, but button is always enabled
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onSignIn, onSetup, initializationError, loginError, isConfigured }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onSignIn, onSetup, initializationError, loginError }) => {
   const { handleResetConfiguration } = useContext(AppStateContext);
   
   return (
@@ -45,8 +45,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSignIn, onSetup, initialization
 
             <button
               onClick={onSignIn}
-              disabled={!isConfigured}
-              className="flex items-center justify-center w-full px-6 py-3 text-lg font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-transform transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="flex items-center justify-center w-full px-6 py-3 text-lg font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-transform transform hover:scale-105"
             >
               <svg className="w-6 h-6 mr-3" viewBox="0 0 48 48">
                 <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
