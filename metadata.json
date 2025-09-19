@@ -1,0 +1,5 @@
+{
+  "name": "Gundeshapur Library Manager",
+  "description": "A modern, minimal web-based library management system that connects to your Google Sheet, which acts as the database. Manage books, users, and loans with a clean interface while retaining the power of direct sheet editing.",
+  "requestFramePermissions": []
+}
