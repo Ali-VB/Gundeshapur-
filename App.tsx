@@ -34,6 +34,8 @@ const App: React.FC = () => {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [initializationError, setInitializationError] = useState<string | null>(null);
+  const [showWizard, setShowWizard] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const handleConfigurationComplete = (key: string, id: string) => {
     localStorage.setItem('googleApiKey', key);
@@ -41,6 +43,7 @@ const App: React.FC = () => {
     setApiKey(key);
     setClientId(id);
     setInitializationError(null); // Clear any previous errors
+    setShowWizard(false); // Hide the wizard and return to login page
     // Reset loading state to re-trigger initialization
     setIsLoading(true);
   };
@@ -59,6 +62,7 @@ const App: React.FC = () => {
     setApiKey(null);
     setClientId(null);
     setInitializationError(null);
+    setLoginError(null);
   };
 
   useEffect(() => {
@@ -90,6 +94,12 @@ const App: React.FC = () => {
   }, [isConfigured, apiKey, clientId]);
 
   const handleSignIn = async () => {
+    setLoginError(null);
+    if (!isConfigured) {
+      setLoginError('Application is not configured. Please complete the setup wizard first.');
+      return;
+    }
+
     if (!isGapiLoaded) return;
     setIsLoading(true);
     try {
@@ -121,7 +131,6 @@ const App: React.FC = () => {
     handleResetConfiguration,
   };
   
-  // Show a spinner only on the initial load and if a user hasn't been found yet via silent sign-in.
   if (isLoading && !user) {
      return (
         <div className="flex h-screen w-screen items-center justify-center bg-gray-100 dark:bg-gray-900">
@@ -130,15 +139,23 @@ const App: React.FC = () => {
     );
   }
   
-  if (!isConfigured) {
-      return <ConfigurationWizard onComplete={handleConfigurationComplete} />;
+  if (showWizard) {
+      return <ConfigurationWizard onComplete={handleConfigurationComplete} onCancel={() => setShowWizard(false)} />;
   }
 
   return (
     <AppStateContext.Provider value={contextValue}>
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         {!user ? (
-          <LoginPage onSignIn={handleSignIn} initializationError={initializationError} />
+          <LoginPage 
+            onSignIn={handleSignIn} 
+            initializationError={initializationError}
+            loginError={loginError}
+            onSetup={() => {
+              setLoginError(null);
+              setShowWizard(true);
+            }}
+          />
         ) : !spreadsheetId ? (
           <SetupPage />
         ) : (

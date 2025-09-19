@@ -3,9 +3,10 @@ import { ICONS } from '../constants';
 
 interface WizardProps {
     onComplete: (apiKey: string, clientId: string) => void;
+    onCancel: () => void;
 }
 
-const ConfigurationWizard: React.FC<WizardProps> = ({ onComplete }) => {
+const ConfigurationWizard: React.FC<WizardProps> = ({ onComplete, onCancel }) => {
     const [step, setStep] = useState(1);
     const [apiKey, setApiKey] = useState('');
     const [clientId, setClientId] = useState('');
@@ -29,9 +30,14 @@ const ConfigurationWizard: React.FC<WizardProps> = ({ onComplete }) => {
                     <>
                         <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Welcome!</h1>
                         <p className="text-gray-600 dark:text-gray-300 mb-8">Let's connect the app to your Google Account. This one-time setup will take about 5 minutes.</p>
-                        <button onClick={() => setStep(2)} className="w-full px-6 py-3 font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
-                            Get Started
-                        </button>
+                        <div className="mt-8 flex flex-col-reverse sm:flex-row-reverse gap-4">
+                            <button onClick={() => setStep(2)} className="w-full px-6 py-3 font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                                Get Started
+                            </button>
+                             <button onClick={onCancel} className="w-full px-6 py-3 font-medium text-gray-700 bg-gray-200 dark:bg-gray-600 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+                                Back to Login
+                            </button>
+                        </div>
                     </>
                 );
             case 2:
@@ -51,7 +57,7 @@ const ConfigurationWizard: React.FC<WizardProps> = ({ onComplete }) => {
                             </li>
                         </ol>
                         <div className="mt-8 flex justify-between items-center">
-                            <button onClick={() => setStep(1)} className="px-4 py-2 font-medium text-gray-600 bg-gray-200 dark:bg-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">Back</button>
+                            <button onClick={onCancel} className="px-4 py-2 font-medium text-gray-600 bg-gray-200 dark:bg-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">Back to Login</button>
                             <button onClick={() => setStep(3)} className="px-6 py-3 font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">I've done this, Next</button>
                         </div>
                     </>

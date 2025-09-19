@@ -4,10 +4,12 @@ import { AppStateContext } from '../App';
 
 interface LoginPageProps {
   onSignIn: () => void;
+  onSetup: () => void;
   initializationError?: string | null;
+  loginError?: string | null;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onSignIn, initializationError }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onSignIn, onSetup, initializationError, loginError }) => {
   const { handleResetConfiguration } = useContext(AppStateContext);
   
   return (
@@ -34,6 +36,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSignIn, initializationError }) 
           <>
             <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Gundeshapur Library</h1>
             <p className="text-gray-600 dark:text-gray-300 mb-8">Your library, powered by Google Sheets.</p>
+            
+            {loginError && (
+              <p className="text-red-500 bg-red-100 dark:bg-red-900/50 p-3 rounded-md my-4 text-sm">{loginError}</p>
+            )}
+
             <button
               onClick={onSignIn}
               className="flex items-center justify-center w-full px-6 py-3 text-lg font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-transform transform hover:scale-105"
@@ -49,10 +56,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSignIn, initializationError }) 
             </button>
             <div className="mt-8 text-center">
                 <button
-                  onClick={handleResetConfiguration}
+                  onClick={onSetup}
                   className="text-sm text-gray-500 dark:text-gray-400 hover:underline focus:outline-none"
                 >
-                  Entered wrong credentials? Reset Configuration
+                  First-Time Setup / Reconfigure
                 </button>
               </div>
           </>
