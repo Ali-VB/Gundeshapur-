@@ -1,15 +1,18 @@
+
 import React, { useContext } from 'react';
 import { ICONS } from '../constants';
 import { AppStateContext } from '../App';
 
 interface LoginPageProps {
-  onSignIn: () => void;
+  onUserSignIn: () => void;
+  onAdminSignIn: () => void;
   onSetup: () => void;
   initializationError?: string | null;
   loginError?: string | null;
+  isConfigured: boolean;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onSignIn, onSetup, initializationError, loginError }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onUserSignIn, onAdminSignIn, onSetup, initializationError, loginError, isConfigured }) => {
   const { handleResetConfiguration } = useContext(AppStateContext);
   
   return (
@@ -42,8 +45,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSignIn, onSetup, initialization
             )}
 
             <button
-              onClick={onSignIn}
-              className="flex items-center justify-center w-full px-6 py-3 text-lg font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-transform transform hover:scale-105"
+              onClick={onUserSignIn}
+              disabled={!isConfigured}
+              className="flex items-center justify-center w-full px-6 py-3 text-lg font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-transform transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               <svg className="w-6 h-6 mr-3" viewBox="0 0 48 48">
                 <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
@@ -54,12 +58,19 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSignIn, onSetup, initialization
               </svg>
               Sign in with Google
             </button>
-            <div className="mt-8 text-center">
+            <div className="mt-8 text-center flex justify-between items-center">
                 <button
                   onClick={onSetup}
                   className="text-sm text-gray-500 dark:text-gray-400 hover:underline focus:outline-none"
                 >
                   First-Time Setup / Reconfigure
+                </button>
+                <button
+                  onClick={onAdminSignIn}
+                  disabled={!isConfigured}
+                  className="text-sm text-gray-500 dark:text-gray-400 hover:underline focus:outline-none disabled:text-gray-400/50 disabled:cursor-not-allowed"
+                >
+                  Admin Login
                 </button>
               </div>
           </>

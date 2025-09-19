@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
 import { ICONS } from '../constants';
 
 interface WizardProps {
-    onComplete: (apiKey: string, clientId: string) => void;
+    onComplete: (apiKey: string, clientId: string, adminEmail: string) => void;
     onCancel: () => void;
 }
 
@@ -10,15 +11,16 @@ const ConfigurationWizard: React.FC<WizardProps> = ({ onComplete, onCancel }) =>
     const [step, setStep] = useState(1);
     const [apiKey, setApiKey] = useState('');
     const [clientId, setClientId] = useState('');
+    const [adminEmail, setAdminEmail] = useState('');
     const [error, setError] = useState('');
 
     const handleSubmit = () => {
-        if (!apiKey.trim() || !clientId.trim()) {
-            setError('Both API Key and Client ID are required.');
+        if (!apiKey.trim() || !clientId.trim() || !adminEmail.trim()) {
+            setError('All three fields (API Key, Client ID, and Admin Email) are required.');
             return;
         }
         setError('');
-        onComplete(apiKey, clientId);
+        onComplete(apiKey, clientId, adminEmail);
     }
 
     const appOrigin = window.location.origin;
@@ -70,35 +72,41 @@ const ConfigurationWizard: React.FC<WizardProps> = ({ onComplete, onCancel }) =>
                         
                         <div className="text-left space-y-4">
                             <details className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer" open>
-                                <summary className="font-semibold text-gray-800 dark:text-gray-200">1. Get & Restrict API Key (Crucial Step)</summary>
+                                <summary className="font-semibold text-gray-800 dark:text-gray-200">1. Get & Restrict API Key</summary>
                                 <ol className="list-decimal list-inside mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
                                     <li><a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">Open the Credentials page</a>.</li>
                                     <li>Click <strong>+ CREATE CREDENTIALS</strong> at the top and select <strong>API key</strong>.</li>
-                                    <li>A pop-up will show your new key. Copy it and paste it into the "API Key" field below. <strong>Do not close the pop-up yet.</strong></li>
-                                    <li>Click the <strong>EDIT API KEY</strong> button. This step is required for the app to work correctly.</li>
-                                    <li>Under <i>Application restrictions</i>, select the <strong>Websites</strong> option.</li>
-                                    <li>Under <i>Website restrictions</i>, click <strong>ADD</strong>.</li>
-                                    <li>In the "URI" field that appears, enter your app's address: <code className="bg-gray-200 dark:bg-gray-600 rounded px-1 font-mono">{appOrigin}</code></li>
-                                    <li>Click <strong>DONE</strong>, and then click <strong>SAVE</strong> at the bottom of the page.</li>
+                                    <li>Copy the new key and paste it into the "API Key" field below.</li>
+                                    <li>Click <strong>EDIT API KEY</strong>. Under <i>Application restrictions</i>, select <strong>Websites</strong>.</li>
+                                    <li>Under <i>Website restrictions</i>, click <strong>ADD</strong> and enter your app's address: <code className="bg-gray-200 dark:bg-gray-600 rounded px-1 font-mono">{appOrigin}</code></li>
+                                    <li>Click <strong>DONE</strong>, and then click <strong>SAVE</strong>.</li>
                                 </ol>
                             </details>
 
                             <details className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer">
                                 <summary className="font-semibold text-gray-800 dark:text-gray-200">2. Get OAuth Client ID</summary>
                                  <ol className="list-decimal list-inside mt-2 space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                    <li>First, go to the <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">OAuth consent screen</a>. If the "Publishing status" is "Testing", click <strong>PUBLISH APP</strong> and confirm. This prevents sign-in errors later.</li>
-                                    <li>Now, go back to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">Credentials page</a>.</li>
+                                    <li>Go to the <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">OAuth consent screen</a>. If status is "Testing", click <strong>PUBLISH APP</strong>.</li>
+                                    <li>Go back to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">Credentials page</a>.</li>
                                     <li>Click <strong>+ CREATE CREDENTIALS</strong> and select <strong>OAuth client ID</strong>.</li>
-                                    <li>If prompted, for "Application type", choose <strong>Web application</strong>.</li>
-                                    <li>Under "Authorized JavaScript origins", click <strong>+ ADD URI</strong> and enter your app's address: <code className="bg-gray-200 dark:bg-gray-600 rounded px-1 font-mono">{appOrigin}</code></li>
-                                    <li>Under "Authorized redirect URIs", click <strong>+ ADD URI</strong> and enter the <strong>exact same address</strong> again: <code className="bg-gray-200 dark:bg-gray-600 rounded px-1 font-mono">{appOrigin}</code></li>
-                                    <li>Click <strong>CREATE</strong>. A pop-up will show your Client ID. Copy it and paste it into the "OAuth Client ID" field below.</li>
-                                    <li className="!mt-4 text-xs italic">If you are asked to configure the consent screen first, select "External" user type, provide an app name and your email, and click through the save prompts. You can skip optional scopes. Then return to step 1 here.</li>
+                                    <li>For "Application type", choose <strong>Web application</strong>.</li>
+                                    <li>Under "Authorized JavaScript origins", click <strong>+ ADD URI</strong> and enter: <code className="bg-gray-200 dark:bg-gray-600 rounded px-1 font-mono">{appOrigin}</code></li>
+                                    <li>Under "Authorized redirect URIs", click <strong>+ ADD URI</strong> and enter the <strong>same address</strong> again: <code className="bg-gray-200 dark:bg-gray-600 rounded px-1 font-mono">{appOrigin}</code></li>
+                                    <li>Click <strong>CREATE</strong>. Copy the Client ID and paste it into the field below.</li>
                                 </ol>
                             </details>
+                             <details className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer" open>
+                                <summary className="font-semibold text-gray-800 dark:text-gray-200">3. Set Admin Email</summary>
+                                <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
+                                    Enter the Google account email address that will be the sole administrator for this application instance. Only this user will be able to access the secure admin panel.
+                                </p>
+                            </details>
 
-                            <input type="text" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="Paste your API Key here" className="w-full p-3 mt-4 border border-gray-300 rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500" />
-                            <input type="text" value={clientId} onChange={e => setClientId(e.target.value)} placeholder="Paste your OAuth Client ID here" className="w-full p-3 border border-gray-300 rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500" />
+                            <div className="space-y-3 mt-4">
+                                <input type="text" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="Paste your API Key here" className="w-full p-3 border border-gray-300 rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500" />
+                                <input type="text" value={clientId} onChange={e => setClientId(e.target.value)} placeholder="Paste your OAuth Client ID here" className="w-full p-3 border border-gray-300 rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500" />
+                                <input type="email" value={adminEmail} onChange={e => setAdminEmail(e.target.value)} placeholder="Enter the Admin's Google Email" className="w-full p-3 border border-gray-300 rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500" />
+                            </div>
                         </div>
                          {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
                         <div className="mt-8 flex justify-between items-center">

@@ -1,12 +1,14 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import type { UserProfile } from './types';
 import { initGoogleScripts, signIn, signOut, configureGoogleApi } from './services/google';
 
 import LoginPage from './components/LoginPage';
 import SetupPage from './components/SetupPage';
-import Layout from './components/Layout';
+import UserLayout from './components/Layout';
 import Spinner from './components/common/Spinner';
 import ConfigurationWizard from './components/ConfigurationWizard';
+import AdminLayout from './components/admin/AdminLayout';
 
 export const AppStateContext = React.createContext<{
   user: UserProfile | null;
@@ -23,78 +25,98 @@ export const AppStateContext = React.createContext<{
 });
 
 const App: React.FC = () => {
-  const [apiKey, setApiKey] = useState<string | null>(localStorage.getItem('googleApiKey'));
-  const [clientId, setClientId] = useState<string | null>(localStorage.getItem('googleClientId'));
-  const isConfigured = !!(apiKey && clientId);
-  
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [clientId, setClientId] = useState<string | null>(null);
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
+
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isGapiLoaded, setIsGapiLoaded] = useState(false);
-  const [spreadsheetId, setSpreadsheetId] = useState<string | null>(
-    localStorage.getItem('spreadsheetId')
-  );
+  const [spreadsheetId, setSpreadsheetId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [initializationError, setInitializationError] = useState<string | null>(null);
   const [showWizard, setShowWizard] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
-
-  const handleConfigurationComplete = (key: string, id: string) => {
-    localStorage.setItem('googleApiKey', key);
-    localStorage.setItem('googleClientId', id);
-    setApiKey(key);
-    setClientId(id);
-    setInitializationError(null); // Clear any previous errors
-    setShowWizard(false); // Hide the wizard and return to login page
-    // Reset loading state to re-trigger initialization
-    setIsLoading(true);
-  };
-
-  const handleSignOut = useCallback(() => {
-    signOut();
-    setUser(null);
-  }, []);
-
-  const handleResetConfiguration = () => {
-    handleSignOut(); // Signs out and clears user state
-    setSpreadsheetId(null); // Clear sheet state
-    localStorage.removeItem('spreadsheetId'); // Clear sheet from storage
-    localStorage.removeItem('googleApiKey');
-    localStorage.removeItem('googleClientId');
-    setApiKey(null);
-    setClientId(null);
-    setInitializationError(null);
-    setLoginError(null);
-  };
+  const [appMode, setAppMode] = useState<'user' | 'admin' | null>(null);
 
   useEffect(() => {
+    // Load config from localStorage on initial mount
+    const savedApiKey = localStorage.getItem('googleApiKey');
+    const savedClientId = localStorage.getItem('googleClientId');
+    const savedAdminEmail = localStorage.getItem('adminEmail');
+    const savedSpreadsheetId = localStorage.getItem('spreadsheetId');
+    
+    setApiKey(savedApiKey);
+    setClientId(savedClientId);
+    setAdminEmail(savedAdminEmail);
+    setSpreadsheetId(savedSpreadsheetId);
+
+    const isConfigured = !!(savedApiKey && savedClientId && savedAdminEmail);
+
     const initialize = async () => {
-      if (!isConfigured || !apiKey || !clientId) {
+      if (!isConfigured) {
         setIsLoading(false);
         return;
       }
       try {
-        configureGoogleApi(apiKey, clientId);
+        configureGoogleApi(savedApiKey!, savedClientId!);
         await initGoogleScripts();
         setIsGapiLoaded(true);
         
-        // Attempt a silent sign-in on page load
         const silentUser = await signIn({ prompt: '' });
         if (silentUser) {
           setUser(silentUser);
+          if (silentUser.email === savedAdminEmail) {
+            setAppMode('admin');
+          } else {
+            setAppMode('user');
+          }
         }
-
       } catch (error) {
         console.error("Failed to initialize Google scripts:", error);
-        const errorMessage = `Failed to initialize Google services. This is likely due to an invalid API Key or Client ID, or because the key is not correctly restricted to this website's URL (${window.location.origin}). Please double-check your Google Cloud project configuration.`;
+        const errorMessage = `Failed to initialize Google services. This is likely due to an invalid API Key or Client ID. Please double-check your Google Cloud project configuration.`;
         setInitializationError(errorMessage);
       } finally {
         setIsLoading(false);
       }
     };
     initialize();
-  }, [isConfigured, apiKey, clientId]);
+  }, []);
 
-  const handleSignIn = async () => {
+  const handleConfigurationComplete = (key: string, id: string, email: string) => {
+    localStorage.setItem('googleApiKey', key);
+    localStorage.setItem('googleClientId', id);
+    localStorage.setItem('adminEmail', email);
+    setApiKey(key);
+    setClientId(id);
+    setAdminEmail(email);
+    setInitializationError(null);
+    setShowWizard(false);
+  };
+  
+  const handleSignOut = useCallback(() => {
+    signOut();
+    setUser(null);
+    setAppMode(null);
+  }, []);
+
+  const handleResetConfiguration = () => {
+    handleSignOut();
+    setSpreadsheetId(null);
+    localStorage.removeItem('spreadsheetId');
+    localStorage.removeItem('googleApiKey');
+    localStorage.removeItem('googleClientId');
+    localStorage.removeItem('adminEmail');
+    setApiKey(null);
+    setClientId(null);
+    setAdminEmail(null);
+    setInitializationError(null);
     setLoginError(null);
+  };
+
+  const handleSignIn = async (mode: 'user' | 'admin') => {
+    setLoginError(null);
+    const isConfigured = !!(apiKey && clientId && adminEmail);
+
     if (!isConfigured) {
       setLoginError('Application is not configured. Please complete the setup wizard first.');
       return;
@@ -103,10 +125,20 @@ const App: React.FC = () => {
     if (!isGapiLoaded) return;
     setIsLoading(true);
     try {
-      // Interactive sign-in will now remember the last used account.
       const profile = await signIn();
       if (profile) {
-        setUser(profile);
+        if (mode === 'admin') {
+          if (profile.email === adminEmail) {
+            setUser(profile);
+            setAppMode('admin');
+          } else {
+            setLoginError('Access Denied: This Google account is not authorized for admin access.');
+            signOut(); // Immediately sign out the unauthorized user.
+          }
+        } else { // mode === 'user'
+          setUser(profile);
+          setAppMode('user');
+        }
       }
     } catch (error) {
       console.error("Sign in failed", error);
@@ -130,36 +162,50 @@ const App: React.FC = () => {
     handleSignOut,
     handleResetConfiguration,
   };
-  
-  if (isLoading && !user) {
-     return (
-        <div className="flex h-screen w-screen items-center justify-center bg-gray-100 dark:bg-gray-900">
-            <Spinner />
-        </div>
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-gray-100 dark:bg-gray-900">
+        <Spinner />
+      </div>
     );
   }
-  
+
   if (showWizard) {
-      return <ConfigurationWizard onComplete={handleConfigurationComplete} onCancel={() => setShowWizard(false)} />;
+    return <ConfigurationWizard onComplete={handleConfigurationComplete} onCancel={() => setShowWizard(false)} />;
   }
+  
+  const isConfigured = !!(apiKey && clientId && adminEmail);
 
   return (
     <AppStateContext.Provider value={contextValue}>
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         {!user ? (
-          <LoginPage 
-            onSignIn={handleSignIn} 
+          <LoginPage
+            onUserSignIn={() => handleSignIn('user')}
+            onAdminSignIn={() => handleSignIn('admin')}
             initializationError={initializationError}
             loginError={loginError}
             onSetup={() => {
               setLoginError(null);
               setShowWizard(true);
             }}
+            isConfigured={isConfigured}
           />
-        ) : !spreadsheetId ? (
-          <SetupPage />
+        ) : appMode === 'admin' ? (
+          <AdminLayout />
+        ) : appMode === 'user' ? (
+          !spreadsheetId ? (
+            <SetupPage />
+          ) : (
+            <UserLayout />
+          )
         ) : (
-          <Layout />
+          // Fallback if mode is not set for some reason
+           <div className="flex h-screen w-screen items-center justify-center bg-gray-100 dark:bg-gray-900">
+             <p>An unexpected error occurred. Please try resetting configuration.</p>
+             <button onClick={handleResetConfiguration}>Reset</button>
+           </div>
         )}
       </div>
     </AppStateContext.Provider>

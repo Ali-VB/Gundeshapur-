@@ -57,5 +57,4 @@ export enum Page {
   Books = 'Books',
   Users = 'Users',
   Loans = 'Loans',
-  Admin = 'Admin',
 }

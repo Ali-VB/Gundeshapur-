@@ -6,7 +6,6 @@ import Dashboard from './Dashboard';
 import BooksPage from './Books';
 import UsersPage from './Users';
 import LoansPage from './Loans';
-import AdminPage from './Admin';
 import { ICONS } from '../constants';
 
 const NavLink: React.FC<{
@@ -28,7 +27,7 @@ const NavLink: React.FC<{
   </button>
 );
 
-const Layout: React.FC = () => {
+const UserLayout: React.FC = () => {
   const [activePage, setActivePage] = useState<Page>(Page.Dashboard);
   const { user, spreadsheetId, handleSignOut } = useContext(AppStateContext);
 
@@ -42,8 +41,6 @@ const Layout: React.FC = () => {
         return <UsersPage />;
       case Page.Loans:
         return <LoansPage />;
-      case Page.Admin:
-        return <AdminPage />;
       default:
         return <Dashboard />;
     }
@@ -68,10 +65,6 @@ const Layout: React.FC = () => {
           <NavLink icon={ICONS.LOANS} label={Page.Loans} activePage={activePage} setPage={setActivePage} />
         </nav>
         <div className="mt-auto">
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4 space-y-2">
-             <NavLink icon={ICONS.ADMIN} label={Page.Admin} activePage={activePage} setPage={setActivePage} />
-          </div>
-
           <a
             href={sheetUrl}
             target="_blank"
@@ -101,4 +94,4 @@ const Layout: React.FC = () => {
   );
 };
 
-export default Layout;
+export default UserLayout;
