@@ -4,15 +4,14 @@ import { ICONS } from '../constants';
 import { AppStateContext } from '../App';
 
 interface LoginPageProps {
-  onUserSignIn: () => void;
-  onAdminSignIn: () => void;
+  onSignIn: () => void;
   onSetup: () => void;
   initializationError?: string | null;
   loginError?: string | null;
   isConfigured: boolean;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onUserSignIn, onAdminSignIn, onSetup, initializationError, loginError, isConfigured }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onSignIn, onSetup, initializationError, loginError, isConfigured }) => {
   const { handleResetConfiguration } = useContext(AppStateContext);
   
   return (
@@ -45,7 +44,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onUserSignIn, onAdminSignIn, onSe
             )}
 
             <button
-              onClick={onUserSignIn}
+              onClick={onSignIn}
               disabled={!isConfigured}
               className="flex items-center justify-center w-full px-6 py-3 text-lg font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-transform transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
@@ -58,19 +57,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onUserSignIn, onAdminSignIn, onSe
               </svg>
               Sign in with Google
             </button>
-            <div className="mt-8 text-center flex justify-between items-center">
+            <div className="mt-8 text-center">
                 <button
                   onClick={onSetup}
                   className="text-sm text-gray-500 dark:text-gray-400 hover:underline focus:outline-none"
                 >
                   First-Time Setup / Reconfigure
-                </button>
-                <button
-                  onClick={onAdminSignIn}
-                  disabled={!isConfigured}
-                  className="text-sm text-gray-500 dark:text-gray-400 hover:underline focus:outline-none disabled:text-gray-400/50 disabled:cursor-not-allowed"
-                >
-                  Admin Login
                 </button>
               </div>
           </>

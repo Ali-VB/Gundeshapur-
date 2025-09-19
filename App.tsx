@@ -113,7 +113,7 @@ const App: React.FC = () => {
     setLoginError(null);
   };
 
-  const handleSignIn = async (mode: 'user' | 'admin') => {
+  const handleSignIn = async () => {
     setLoginError(null);
     const isConfigured = !!(apiKey && clientId && adminEmail);
 
@@ -127,15 +127,11 @@ const App: React.FC = () => {
     try {
       const profile = await signIn();
       if (profile) {
-        if (mode === 'admin') {
-          if (profile.email === adminEmail) {
-            setUser(profile);
-            setAppMode('admin');
-          } else {
-            setLoginError('Access Denied: This Google account is not authorized for admin access.');
-            signOut(); // Immediately sign out the unauthorized user.
-          }
-        } else { // mode === 'user'
+        // Automatic role detection
+        if (profile.email === adminEmail) {
+          setUser(profile);
+          setAppMode('admin');
+        } else {
           setUser(profile);
           setAppMode('user');
         }
@@ -182,8 +178,7 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         {!user ? (
           <LoginPage
-            onUserSignIn={() => handleSignIn('user')}
-            onAdminSignIn={() => handleSignIn('admin')}
+            onSignIn={handleSignIn}
             initializationError={initializationError}
             loginError={loginError}
             onSetup={() => {
