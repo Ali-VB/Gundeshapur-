@@ -1,5 +1,5 @@
+
 import React, { useState, useEffect, useContext, useMemo } from 'react';
-// Fix: Use LibraryContext to get spreadsheetId.
 import { LibraryContext } from '../LibraryApp';
 import type { Book, LibraryUser } from '../types';
 import { getSheetData, appendRow, updateCell } from '../services/google';
@@ -8,7 +8,6 @@ import Spinner from './common/Spinner';
 import Modal from './common/Modal';
 
 const BooksPage: React.FC = () => {
-  // Fix: Consume spreadsheetId from LibraryContext.
   const { spreadsheetId } = useContext(LibraryContext);
   const [books, setBooks] = useState<Book[]>([]);
   const [users, setUsers] = useState<LibraryUser[]>([]);

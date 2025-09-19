@@ -1,5 +1,5 @@
+
 import React, { useState, useEffect, useContext } from 'react';
-// Fix: Use LibraryContext to get spreadsheetId.
 import { LibraryContext } from '../LibraryApp';
 import type { Book, LibraryUser, Loan } from '../types';
 import { getSheetData } from '../services/google';
@@ -8,7 +8,6 @@ import Spinner from './common/Spinner';
 import StatCard from './common/StatCard';
 
 const Dashboard: React.FC = () => {
-  // Fix: Consume spreadsheetId from LibraryContext.
   const { spreadsheetId } = useContext(LibraryContext);
   const [books, setBooks] = useState<Book[]>([]);
   const [users, setUsers] = useState<LibraryUser[]>([]);

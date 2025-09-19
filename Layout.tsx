@@ -1,14 +1,13 @@
 
 import React, { useState, useContext } from 'react';
 import { AppStateContext } from '../App';
+import { LibraryContext } from '../LibraryApp';
 import { Page } from '../types';
 import Dashboard from './Dashboard';
 import BooksPage from './Books';
 import UsersPage from './Users';
 import LoansPage from './Loans';
 import { ICONS } from '../constants';
-// Fix: Import LibraryContext to access spreadsheetId.
-import { LibraryContext } from '../LibraryApp';
 
 const NavLink: React.FC<{
   icon: React.ReactNode;
@@ -31,7 +30,6 @@ const NavLink: React.FC<{
 
 const UserLayout: React.FC = () => {
   const [activePage, setActivePage] = useState<Page>(Page.Dashboard);
-  // Fix: Consume user data from AppStateContext and spreadsheetId from LibraryContext.
   const { user, handleSignOut } = useContext(AppStateContext);
   const { spreadsheetId } = useContext(LibraryContext);
 

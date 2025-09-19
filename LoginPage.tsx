@@ -7,7 +7,6 @@ interface LoginPageProps {
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onSignIn }) => {
-  
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
       <div className="p-10 bg-white dark:bg-gray-800 rounded-2xl shadow-xl text-center max-w-md w-full">

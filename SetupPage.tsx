@@ -1,13 +1,11 @@
 
 import React, { useState, useContext } from 'react';
 import { AppStateContext } from '../App';
+import { LibraryContext } from '../LibraryApp';
 import { createNewSheet, validateSheet } from '../services/google';
 import Spinner from './common/Spinner';
-// Fix: Import LibraryContext to access setSpreadsheetId.
-import { LibraryContext } from '../LibraryApp';
 
 const SetupPage: React.FC = () => {
-  // Fix: Consume user data from AppStateContext and setSpreadsheetId from LibraryContext.
   const { user, handleSignOut } = useContext(AppStateContext);
   const { setSpreadsheetId } = useContext(LibraryContext);
   const [isLoading, setIsLoading] = useState(false);

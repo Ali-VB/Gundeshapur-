@@ -1,4 +1,3 @@
-
 import { GOOGLE_SCOPES, SHEET_CONFIG } from '../constants';
 import type { UserProfile } from '../types';
 
@@ -10,77 +9,53 @@ declare global {
   }
 }
 
-let apiKey: string | null = null;
-let clientId: string | null = null;
-
-export const configureGoogleApi = (key: string | null, id: string | null) => {
-    apiKey = key;
-    clientId = id;
-};
-
-export const initGoogleScripts = (): Promise<void> => {
+// Initializes only the Google Sign-In client. This can be run on page load
+// for all users, as it only requires the Client ID.
+export const initSignIn = (clientId: string): Promise<void> => {
   return new Promise((resolve, reject) => {
+    if (!clientId || clientId.includes('YOUR_')) {
+      return reject("Sign-In cannot be initialized. The user must provide a Client ID.");
+    }
+
     const checkScriptsReady = () => {
-      // Check if both the gapi and gsi libraries have loaded.
-      if (window.gapi && window.google?.accounts?.oauth2) {
-        
-        let gapiInited = false;
-        let tokenClientInited = false;
-
-        const checkCompletion = () => {
-            // If we have an API key, we need GAPI client. If not, we don't.
-            const gapiTarget = apiKey ? gapiInited : true;
-            // We always need a token client if a client ID is provided.
-            const tokenClientTarget = clientId ? tokenClientInited : true;
-
-            if (gapiTarget && tokenClientTarget) {
-                resolve();
-            }
-        };
-
-        // Initialize Google Identity Services token client if clientId is available.
-        // This is required for any sign-in flow.
-        if (clientId) {
-          try {
-            window.tokenClient = window.google.accounts.oauth2.initTokenClient({
-                client_id: clientId,
-                scope: GOOGLE_SCOPES,
-                callback: '', // This is set dynamically when signIn is called.
-            });
-            tokenClientInited = true;
-          } catch (err) {
-            return reject(err);
-          }
-        }
-
-        // Initialize gapi client if apiKey is available.
-        // This is required for Sheets/Drive API calls.
-        if (apiKey) {
-          window.gapi.load('client', () => {
-            window.gapi.client.init({
-              apiKey: apiKey,
-              discoveryDocs: [
-                'https://sheets.googleapis.com/$discovery/rest?version=v4',
-                'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
-              ],
-            }).then(() => {
-                gapiInited = true;
-                checkCompletion();
-            }).catch(reject);
+      if (window.google?.accounts?.oauth2) {
+        try {
+          window.tokenClient = window.google.accounts.oauth2.initTokenClient({
+            client_id: clientId,
+            scope: GOOGLE_SCOPES,
+            callback: '', // This is set dynamically when signIn is called.
           });
+          resolve();
+        } catch (err) {
+          reject(err);
         }
-        
-        checkCompletion();
-
       } else {
-        // One or both scripts are not ready yet, poll again in 100ms.
         setTimeout(checkScriptsReady, 100);
       }
     };
-
     checkScriptsReady();
   });
 };
+
+// Initializes the GAPI client for API calls (Sheets, Drive).
+// This requires an API Key and should only be run after the user has provided it.
+export const initGapiClient = (apiKey: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+        if (!apiKey || apiKey.includes('YOUR_')) {
+            return reject("GAPI client cannot be initialized. The user must provide an API Key.");
+        }
+        window.gapi.load('client', () => {
+            window.gapi.client.init({
+                apiKey: apiKey,
+                discoveryDocs: [
+                'https://sheets.googleapis.com/$discovery/rest?version=v4',
+                'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
+                ],
+            }).then(resolve).catch(reject);
+        });
+    });
+};
+
 
 export const signIn = (options?: { prompt?: '' | 'consent' | 'select_account' }): Promise<UserProfile | null> => {
     return new Promise((resolve, reject) => {
@@ -88,20 +63,20 @@ export const signIn = (options?: { prompt?: '' | 'consent' | 'select_account' })
             return reject("Google Token Client not initialized. Is the app configured with a Client ID?");
         }
         
-        const callback = async (res: any) => {
-            if (res.error) {
-                // For silent sign-in attempts, failure is expected if the user isn't logged in.
-                // We resolve with null instead of rejecting the promise.
+        const callback = async (tokenResponse: any) => {
+            if (tokenResponse.error) {
                 if (options?.prompt === '') {
-                    console.log("Silent sign-in failed, this is expected if user isn't logged in.", res.error);
+                    console.log("Silent sign-in failed, this is expected if user isn't logged in.", tokenResponse.error);
                     return resolve(null);
                 }
-                // For interactive attempts, an error should be surfaced to the user.
-                return reject(res);
+                return reject(tokenResponse);
             }
             try {
+                // Set the token for future GAPI calls in this session
+                window.gapi.client.setToken({ access_token: tokenResponse.access_token });
+
                 const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                    headers: { 'Authorization': `Bearer ${window.gapi.client.getToken().access_token}` }
+                    headers: { 'Authorization': `Bearer ${tokenResponse.access_token}` }
                 });
                 const profile = await response.json();
                 resolve({
@@ -122,9 +97,6 @@ export const signIn = (options?: { prompt?: '' | 'consent' | 'select_account' })
              requestOptions.prompt = options.prompt;
         }
 
-        // Let the caller decide the prompt behavior.
-        // prompt: '' is for silent, non-UI attempts.
-        // No prompt property for user-initiated clicks for remembering user.
         window.tokenClient.requestAccessToken(requestOptions);
     });
 };
@@ -193,6 +165,7 @@ export const createNewSheet = async (title: string) => {
             valueInputOption: 'USER_ENTERED',
             data: [
                 { range: `${SHEET_CONFIG.BOOKS.name}!A1`, values: [SHEET_CONFIG.BOOKS.headers] },
+                // Fix: Corrected typo 'SHE' to 'SHEET_CONFIG'.
                 { range: `${SHEET_CONFIG.USERS.name}!A1`, values: [SHEET_CONFIG.USERS.headers] },
                 { range: `${SHEET_CONFIG.LOANS.name}!A1`, values: [SHEET_CONFIG.LOANS.headers] },
             ]
