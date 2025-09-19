@@ -97,7 +97,15 @@ const SetupPage: React.FC = () => {
           {/* Option 2: Connect Existing */}
           <div className="p-6 border border-gray-200 dark:border-gray-700 rounded-lg">
             <h2 className="text-xl font-semibold mb-2 text-gray-700 dark:text-gray-200">Connect an Existing Sheet</h2>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">Paste the ID of your Google Sheet. You can find it in the URL.</p>
+             <div className="text-sm text-gray-500 dark:text-gray-400 mb-4 text-left space-y-2">
+                <p>Open your Google Sheet and look at the URL in your browser's address bar.</p>
+                <p>The Sheet ID is the long string of random characters between <code className="bg-gray-200 dark:bg-gray-700/50 rounded-sm px-1">/d/</code> and <code className="bg-gray-200 dark:bg-gray-700/50 rounded-sm px-1">/edit</code>. Copy and paste it below.</p>
+                <div className="p-2 bg-gray-100 dark:bg-gray-900 rounded-md text-xs overflow-x-auto whitespace-nowrap">
+                    <span className="text-gray-400 dark:text-gray-500">https://docs.google.com/spreadsheets/d/</span>
+                    <span className="bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 font-bold px-1 rounded">1aBcDeFgHiJkLmNoPqRsTuVwXyZ_1234567890</span>
+                    <span className="text-gray-400 dark:text-gray-500">/edit#gid=0</span>
+                </div>
+            </div>
             <div className="flex gap-2">
               <input
                 type="text"
