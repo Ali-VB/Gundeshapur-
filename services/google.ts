@@ -53,10 +53,21 @@ export const initGoogleScripts = (): Promise<void> => {
   });
 };
 
-export const signIn = (): Promise<UserProfile | null> => {
+export const signIn = (options?: { prompt?: '' | 'consent' | 'select_account' }): Promise<UserProfile | null> => {
     return new Promise((resolve, reject) => {
+        if (!window.tokenClient) {
+            return reject("Google Token Client not initialized.");
+        }
+        
         const callback = async (res: any) => {
             if (res.error) {
+                // For silent sign-in attempts, failure is expected if the user isn't logged in.
+                // We resolve with null instead of rejecting the promise.
+                if (options?.prompt === '') {
+                    console.log("Silent sign-in failed, this is expected if user isn't logged in.", res.error);
+                    return resolve(null);
+                }
+                // For interactive attempts, an error should be surfaced to the user.
                 return reject(res);
             }
             try {
@@ -77,11 +88,15 @@ export const signIn = (): Promise<UserProfile | null> => {
 
         window.tokenClient.callback = callback;
         
-        if (window.gapi.client.getToken() === null) {
-            window.tokenClient.requestAccessToken({ prompt: 'consent' });
-        } else {
-            window.tokenClient.requestAccessToken({ prompt: '' });
+        const requestOptions: { prompt?: string } = {};
+        if (options?.prompt !== undefined) {
+             requestOptions.prompt = options.prompt;
         }
+
+        // Let the caller decide the prompt behavior.
+        // prompt: '' is for silent, non-UI attempts.
+        // No prompt property for user-initiated clicks for remembering user.
+        window.tokenClient.requestAccessToken(requestOptions);
     });
 };
 

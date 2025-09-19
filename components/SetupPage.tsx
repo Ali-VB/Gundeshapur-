@@ -4,7 +4,7 @@ import { createNewSheet, validateSheet } from '../services/google';
 import Spinner from './common/Spinner';
 
 const SetupPage: React.FC = () => {
-  const { setSpreadsheetId, user, handleSignOut } = useContext(AppStateContext);
+  const { setSpreadsheetId, user, handleSignOut, handleResetConfiguration } = useContext(AppStateContext);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [inputId, setInputId] = useState('');
@@ -59,7 +59,10 @@ const SetupPage: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-       <div className="absolute top-4 right-4">
+       <div className="absolute top-4 right-4 flex items-center gap-2">
+         <button onClick={handleResetConfiguration} className="px-4 py-2 text-sm text-gray-700 bg-white rounded-md shadow hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+          Reset Config
+        </button>
         <button onClick={handleSignOut} className="px-4 py-2 text-sm text-gray-700 bg-white rounded-md shadow hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
           Sign Out
         </button>

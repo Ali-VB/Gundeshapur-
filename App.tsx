@@ -13,17 +13,19 @@ export const AppStateContext = React.createContext<{
   spreadsheetId: string | null;
   setSpreadsheetId: (id: string | null) => void;
   handleSignOut: () => void;
+  handleResetConfiguration: () => void;
 }>({
   user: null,
   spreadsheetId: null,
   setSpreadsheetId: () => {},
   handleSignOut: () => {},
+  handleResetConfiguration: () => {},
 });
 
 const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string | null>(localStorage.getItem('googleApiKey'));
   const [clientId, setClientId] = useState<string | null>(localStorage.getItem('googleClientId'));
-  const [isConfigured, setIsConfigured] = useState(!!(apiKey && clientId));
+  const isConfigured = !!(apiKey && clientId);
   
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isGapiLoaded, setIsGapiLoaded] = useState(false);
@@ -31,13 +33,14 @@ const App: React.FC = () => {
     localStorage.getItem('spreadsheetId')
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [initializationError, setInitializationError] = useState<string | null>(null);
 
   const handleConfigurationComplete = (key: string, id: string) => {
     localStorage.setItem('googleApiKey', key);
     localStorage.setItem('googleClientId', id);
     setApiKey(key);
     setClientId(id);
-    setIsConfigured(true);
+    setInitializationError(null); // Clear any previous errors
     // Reset loading state to re-trigger initialization
     setIsLoading(true);
   };
@@ -45,9 +48,18 @@ const App: React.FC = () => {
   const handleSignOut = useCallback(() => {
     signOut();
     setUser(null);
-    setSpreadsheetId(null);
-    localStorage.removeItem('spreadsheetId');
   }, []);
+
+  const handleResetConfiguration = () => {
+    handleSignOut(); // Signs out and clears user state
+    setSpreadsheetId(null); // Clear sheet state
+    localStorage.removeItem('spreadsheetId'); // Clear sheet from storage
+    localStorage.removeItem('googleApiKey');
+    localStorage.removeItem('googleClientId');
+    setApiKey(null);
+    setClientId(null);
+    setInitializationError(null);
+  };
 
   useEffect(() => {
     const initialize = async () => {
@@ -59,12 +71,17 @@ const App: React.FC = () => {
         configureGoogleApi(apiKey, clientId);
         await initGoogleScripts();
         setIsGapiLoaded(true);
+        
+        // Attempt a silent sign-in on page load
+        const silentUser = await signIn({ prompt: '' });
+        if (silentUser) {
+          setUser(silentUser);
+        }
+
       } catch (error) {
         console.error("Failed to initialize Google scripts:", error);
-        localStorage.removeItem('googleApiKey');
-        localStorage.removeItem('googleClientId');
-        setIsConfigured(false);
-        alert("Failed to initialize Google services with the provided credentials. Please check them and try again.");
+        const errorMessage = `Failed to initialize Google services. This is likely due to an invalid API Key or Client ID, or because the key is not correctly restricted to this website's URL (${window.location.origin}). Please double-check your Google Cloud project configuration.`;
+        setInitializationError(errorMessage);
       } finally {
         setIsLoading(false);
       }
@@ -76,6 +93,7 @@ const App: React.FC = () => {
     if (!isGapiLoaded) return;
     setIsLoading(true);
     try {
+      // Interactive sign-in will now remember the last used account.
       const profile = await signIn();
       if (profile) {
         setUser(profile);
@@ -100,9 +118,11 @@ const App: React.FC = () => {
       setSpreadsheetId(id);
     },
     handleSignOut,
+    handleResetConfiguration,
   };
   
-  if (isLoading) {
+  // Show a spinner only on the initial load and if a user hasn't been found yet via silent sign-in.
+  if (isLoading && !user) {
      return (
         <div className="flex h-screen w-screen items-center justify-center bg-gray-100 dark:bg-gray-900">
             <Spinner />
@@ -118,7 +138,7 @@ const App: React.FC = () => {
     <AppStateContext.Provider value={contextValue}>
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         {!user ? (
-          <LoginPage onSignIn={handleSignIn} />
+          <LoginPage onSignIn={handleSignIn} initializationError={initializationError} />
         ) : !spreadsheetId ? (
           <SetupPage />
         ) : (
